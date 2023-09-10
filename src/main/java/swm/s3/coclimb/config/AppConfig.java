@@ -9,11 +9,19 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.apache.http.Header;
 import org.apache.http.HttpHost;
+import org.apache.http.auth.AuthScope;
+import org.apache.http.auth.UsernamePasswordCredentials;
+import org.apache.http.conn.ssl.NoopHostnameVerifier;
+import org.apache.http.conn.ssl.TrustAllStrategy;
+import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.message.BasicHeader;
+import org.apache.http.ssl.SSLContextBuilder;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestClientBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
+import org.springframework.context.annotation.Profile;
 import swm.s3.coclimb.api.adapter.out.elasticsearch.ElasticProperties;
 import swm.s3.coclimb.config.aspect.logtrace.LogTraceAspect;
 import swm.s3.coclimb.config.aspect.logtrace.LogTraceImpl;
@@ -54,4 +62,35 @@ public class AppConfig {
         // And create the API client
         return new ElasticsearchClient(transport);
     }
+
+    @Bean
+    @Primary
+    @Profile("test")
+    public ElasticsearchClient testElasticsearchClient() {
+        // Create the low-level client
+        RestClientBuilder restClientBuilder = RestClient
+                .builder(HttpHost.create("https://localhost:9200"));
+
+        BasicCredentialsProvider credentialProvider = new BasicCredentialsProvider();
+        credentialProvider.setCredentials(AuthScope.ANY,
+                new UsernamePasswordCredentials("elastic", "test"));
+        RestClient restClient = restClientBuilder.setHttpClientConfigCallback(hc -> {
+            try {
+                return hc
+                        .setSSLContext(new SSLContextBuilder().loadTrustMaterial(null, TrustAllStrategy.INSTANCE).build())
+                        .setSSLHostnameVerifier(NoopHostnameVerifier.INSTANCE)
+                        .setDefaultCredentialsProvider(credentialProvider);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }).build();
+
+        // Create the transport with a Jackson mapper
+        ElasticsearchTransport transport = new RestClientTransport(
+                restClient, new JacksonJsonpMapper());
+
+        // And create the API client
+        return new ElasticsearchClient(transport);
+    }
+
 }
