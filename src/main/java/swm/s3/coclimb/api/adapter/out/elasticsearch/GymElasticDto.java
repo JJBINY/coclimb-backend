@@ -1,4 +1,4 @@
-package swm.s3.coclimb.api.adapter.out.elasticsearch.dto;
+package swm.s3.coclimb.api.adapter.out.elasticsearch;
 
 import lombok.Builder;
 import lombok.Getter;
