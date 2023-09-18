@@ -122,9 +122,4 @@ public class GymService implements GymCommand, GymQuery {
                 .map(GymSearchResponseDto::of)
                 .toList();
     }
-
-    @Override
-    public List<String> autoCorrectGymNames(String keyword, int size) {
-        return gymLoadPort.autoCorrectGymNames(keyword, size);
-    }
 }

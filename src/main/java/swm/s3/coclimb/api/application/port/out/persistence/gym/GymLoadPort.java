@@ -20,7 +20,4 @@ public interface GymLoadPort {
     List<GymNearby> findNearby(float latitude, float longitude, float distance);
 
     List<Gym> searchByName(String name);
-
-
-    List<String> autoCorrectGymNames(String name, int size);
 }
