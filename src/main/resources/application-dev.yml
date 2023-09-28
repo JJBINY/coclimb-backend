@@ -9,7 +9,7 @@ spring:
     password: ${dev.db.password}
   jpa:
     hibernate:
-      ddl-auto: create
+      ddl-auto: none
     properties:
       hibernate:
         show_sql: true
@@ -25,6 +25,8 @@ app-config:
     server-url: ${dev.elastic.server_url}
     api-key : ${dev.elastic.api_key}
     finger-print : ${dev.elastic.finger_print}
+    user-name: ${dev.elastic.user_name}
+    password: ${dev.elastic.password}
 
 
 logging:
