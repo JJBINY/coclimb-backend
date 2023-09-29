@@ -102,3 +102,11 @@ task copyDocument(type: Copy) {
 bootJar {
 	dependsOn copyDocument
 }
+
+def dockerComposeRunnerClass = 'swm.s3.coclimb.config.DockerComposeCloser'
+
+task dockerComposeDown(type: JavaExec) {
+	classpath = sourceSets.main.runtimeClasspath
+	main = dockerComposeRunnerClass
+	args 'main'
+}
