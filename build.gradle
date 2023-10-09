@@ -80,6 +80,7 @@ dependencies {
 	// AWS SDK
 	// https://mvnrepository.com/artifact/software.amazon.awssdk/secretsmanager
 	implementation group: 'software.amazon.awssdk', name: 'secretsmanager', version: '2.20.151'
+	implementation group: 'software.amazon.awssdk', name: 'sts', version: '2.20.151'
 
 
 }
