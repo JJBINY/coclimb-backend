@@ -16,7 +16,8 @@ public class AwsSTSManager{
     private final StsClient stsClient;
     private final AwsS3MediaProperties mediaProperties;
 
-    public Credentials getUploadCredentials(String policy) {
+    public Credentials getCredentials(String bucket, String key, String action) {
+        String policy = generatePolicy(bucket, key, action);
         return stsClient.assumeRole(getAssumeRoleRequest(
                         mediaProperties.getWriteRoleArn(),
                         "temp-upload-session",
@@ -24,7 +25,6 @@ public class AwsSTSManager{
                         policy))
                 .credentials();
     }
-
 
     private AssumeRoleRequest getAssumeRoleRequest(String roleArn, String roleSessionName, Integer validTime, String policy) {
         AssumeRoleRequest assumeRoleRequest = AssumeRoleRequest.builder()
@@ -40,7 +40,7 @@ public class AwsSTSManager{
         return String.format("%s/%s/%s", prefix, userId.toString(), UUID.randomUUID());
     }
 
-    public String generatePolicy(String bucket, String key, String action) {
+    private String generatePolicy(String bucket, String key, String action) {
         String resourceArn = String.format("arn:aws:s3:::%s/%s", bucket, key);
         String policy = "{\n" +
                 "    \"Version\": \"2012-10-17\",\n" +

@@ -13,7 +13,6 @@ import swm.s3.coclimb.api.application.port.in.media.MediaCommand;
 import swm.s3.coclimb.api.application.port.in.media.MediaQuery;
 import swm.s3.coclimb.api.application.port.in.media.dto.MediaDeleteRequestDto;
 import swm.s3.coclimb.api.application.port.in.media.dto.MediaPageRequestDto;
-import swm.s3.coclimb.api.application.port.out.aws.dto.S3AccessToken;
 import swm.s3.coclimb.api.exception.FieldErrorType;
 import swm.s3.coclimb.api.exception.errortype.ValidationFail;
 import swm.s3.coclimb.config.argumentresolver.LoginUser;
@@ -29,6 +28,8 @@ public class MediaController {
 
     private final MediaQuery mediaQuery;
     private final MediaCommand mediaCommand;
+    private static final String WRITE_ACTION = "PutObject";
+
 
     @PostMapping("/medias")
     public ResponseEntity<Void> createMedia(@RequestBody @Valid MediaCreateRequest mediaCreateRequest, @LoginUser User user) {
@@ -112,12 +113,24 @@ public class MediaController {
                 .build();
     }
 
-    @GetMapping("/medias/access-token")
-    public ResponseEntity<S3AccessTokenResponse> getMediaAccessToken(@LoginUser User user) {
+    @GetMapping("/medias/upload-token")
+    public ResponseEntity<S3AccessTokenResponse> getMediaUploadToken(@LoginUser User user, @RequestParam Integer type) {
+        String prefix;
+        switch (type){
+            case 0:
+                prefix = "media";
+                break;
+            case 1:
+                prefix = "thumbnail";
+                break;
+            default:
+                throw ValidationFail.onRequest()
+                        .addField("type", FieldErrorType.NOT_MATCH);
+        }
+
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(S3AccessTokenResponse.of(
-                        mediaCommand.createTokenForUpload("coclimb-media-bucket", "media", user.getId())));
-
+                        mediaCommand.createS3AccessToken("coclimb-media-bucket", prefix, user.getId(), WRITE_ACTION)));
     }
 }

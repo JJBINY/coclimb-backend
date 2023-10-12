@@ -42,8 +42,6 @@ public class MediaService implements MediaQuery, MediaCommand {
     private final AwsS3UpdatePort awsS3UpdatePort;
 
     private final AwsSTSManager awsSTSManager;
-    private static final String WRITE_ACTION = "PutObject";
-    private static final String READ_ACTION = "Get*";
 
     @Override
     public List<InstagramMediaResponseDto> getMyInstagramVideos(String accessToken) {
@@ -67,13 +65,9 @@ public class MediaService implements MediaQuery, MediaCommand {
             throw new InstagramMediaIdConflict();
         }
 
-        DownloadedFileDetail mediaFile = fileDownloadPort.downloadFile(mediaCreateRequestDto.getMediaUrl());
-        String mediaUrl = awsS3UpdatePort.uploadFile(mediaFile);
-
-        DownloadedFileDetail thumbnailFile = fileDownloadPort.downloadFile(mediaCreateRequestDto.getThumbnailUrl());
-        String thumbnailUrl = awsS3UpdatePort.uploadFile(thumbnailFile);
-
-        mediaUpdatePort.save(mediaCreateRequestDto.toEntity(mediaUrl, thumbnailUrl));
+        mediaUpdatePort.save(mediaCreateRequestDto.toEntity(
+                awsS3UpdatePort.getCloudFrontUrl(mediaCreateRequestDto.getMediaUrl()),
+                awsS3UpdatePort.getCloudFrontUrl(mediaCreateRequestDto.getThumbnailUrl())));
     }
 
     private boolean isInstagramMediaIdDuplicated(String instagramMediaId) {
@@ -146,10 +140,9 @@ public class MediaService implements MediaQuery, MediaCommand {
     }
 
     @Override
-    public S3AccessToken createTokenForUpload(String bucket, String prefix, Long userId){
+    public S3AccessToken createS3AccessToken(String bucket, String prefix, Long userId, String action){
         String key = awsSTSManager.generateKey(prefix, userId);
-        String policy = awsSTSManager.generatePolicy(bucket, key, WRITE_ACTION);
-        return S3AccessToken
-                .of(bucket, key, awsSTSManager.getUploadCredentials(policy));
+        return S3AccessToken.of(bucket, key, awsSTSManager.getCredentials(bucket, key, action));
     }
+
 }
