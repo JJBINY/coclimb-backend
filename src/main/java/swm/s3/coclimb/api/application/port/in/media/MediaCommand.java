@@ -11,5 +11,5 @@ public interface MediaCommand {
     void updateMedia(MediaUpdateRequestDto mediaUpdateRequestDto);
     void deleteMedia(MediaDeleteRequestDto mediaDeleteRequestDto);
 
-    S3AccessToken createTokenForUpload(String bucket, String prefix, Long userId);
+    S3AccessToken createS3AccessToken(String bucket, String prefix, Long userId, String action);
 }
