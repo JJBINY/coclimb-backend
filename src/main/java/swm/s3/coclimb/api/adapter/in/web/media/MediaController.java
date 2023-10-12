@@ -13,6 +13,7 @@ import swm.s3.coclimb.api.application.port.in.media.MediaCommand;
 import swm.s3.coclimb.api.application.port.in.media.MediaQuery;
 import swm.s3.coclimb.api.application.port.in.media.dto.MediaDeleteRequestDto;
 import swm.s3.coclimb.api.application.port.in.media.dto.MediaPageRequestDto;
+import swm.s3.coclimb.api.application.port.out.aws.dto.S3AccessToken;
 import swm.s3.coclimb.api.exception.FieldErrorType;
 import swm.s3.coclimb.api.exception.errortype.ValidationFail;
 import swm.s3.coclimb.config.argumentresolver.LoginUser;
@@ -109,5 +110,14 @@ public class MediaController {
         return ResponseEntity
                 .status(HttpStatus.NO_CONTENT)
                 .build();
+    }
+
+    @GetMapping("/medias/access-token")
+    public ResponseEntity<S3AccessTokenResponse> getMediaAccessToken(@LoginUser User user) {
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(S3AccessTokenResponse.of(
+                        mediaCommand.createTokenForUpload("coclimb-media-bucket", "media", user.getId())));
+
     }
 }
