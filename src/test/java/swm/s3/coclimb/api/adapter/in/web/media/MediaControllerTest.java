@@ -23,6 +23,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.*;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -166,16 +167,47 @@ class MediaControllerTest extends ControllerTestSupport {
                         .sessionToken("st")
                         .build());
 
-        given(mediaCommand.createTokenForUpload(any(), any(), any())).willReturn(s3AccessToken);
+        given(mediaCommand.createS3AccessToken(any(), any(), any(),any())).willReturn(s3AccessToken);
 
         // when, then
-        mockMvc.perform(get("/medias/access-token")
-                .header("Authorization", accessToken))
+        mockMvc.perform(get("/medias/upload-token")
+                        .header("Authorization", accessToken)
+                        .queryParam("type", "0"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.accessKey").value("ac"))
                 .andExpect(jsonPath("$.secretKey").value("sc"))
                 .andExpect(jsonPath("$.sessionToken").value("st"))
                 .andExpect(jsonPath("$.bucket").value("bucket"))
                 .andExpect(jsonPath("$.key").value("key"));
+    }
+
+    @Test
+    @DisplayName("미디어 접근을 위한 엑세스 토큰 요청 시, 잘못된 type을 입력한 경우 예외가 발생한다.")
+    void getMediaAccessTokenWithWrongType() throws Exception {
+        // given
+        String accessToken = "token";
+        given(jwtManager.getSubject(accessToken)).willReturn("1");
+        given(userLoadPort.getById(1L)).willReturn(User.builder()
+                .name("username")
+                .instagramUserInfo(InstagramUserInfo.builder().build())
+                .build());
+        S3AccessToken s3AccessToken = S3AccessToken.of("bucket",
+                "key",
+                Credentials.builder()
+                        .accessKeyId("ac")
+                        .secretAccessKey("sc")
+                        .sessionToken("st")
+                        .build());
+
+        given(mediaCommand.createS3AccessToken(any(), any(), any(),any())).willReturn(s3AccessToken);
+
+        // when, then
+        mockMvc.perform(get("/medias/access-token")
+                        .header("Authorization", accessToken)
+                        .queryParam("type", "-1"))
+                .andDo(print())
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").isString())
+                .andExpect(jsonPath("$.fields").isMap());
     }
 }

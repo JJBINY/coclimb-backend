@@ -342,9 +342,10 @@ class MediaServiceTest extends IntegrationTestSupport {
         Long userId = 1L;
         String bucket = "coclimb-media-bucket";
         String prefix = "test";
+        String action = "PutObject";
 
         // when
-        S3AccessToken sut = mediaService.createTokenForUpload(bucket, prefix, userId);
+        S3AccessToken sut = mediaService.createS3AccessToken(bucket, prefix, userId,action);
 
         // then
         assertThat(sut).isNotNull();

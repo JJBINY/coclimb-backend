@@ -18,10 +18,10 @@ class AwsSTSManagerTest extends IntegrationTestSupport {
         Long userId = 1L;
         String bucket = "coclimb-media-bucket";
         String prefix = "test";
+        String action = "PutObject";
         String key = awsSTSManager.generateKey(prefix, userId);
-        String policy = awsSTSManager.generatePolicy(bucket, key, "PutObject");
         // when
-        Credentials sut = awsSTSManager.getUploadCredentials(policy);
+        Credentials sut = awsSTSManager.getCredentials(bucket, key, action);
 
         // then
         assertThat(sut).isNotNull();
@@ -38,9 +38,10 @@ class AwsSTSManagerTest extends IntegrationTestSupport {
         String bucket = "coclimb-media-bucket";
         String prefix = "test";
         String key = awsSTSManager.generateKey(prefix, userId);
-        String policy = awsSTSManager.generatePolicy(bucket, key, "PutObject");
+        String action = "PutObject";
+
         // when
-        Credentials sut = awsSTSManager.getUploadCredentials(policy);
+        Credentials sut = awsSTSManager.getCredentials(bucket,key,action);
 
         // then
         assertThat(sut).isNotNull();
