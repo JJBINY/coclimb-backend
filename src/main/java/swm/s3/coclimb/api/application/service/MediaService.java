@@ -2,9 +2,13 @@ package swm.s3.coclimb.api.application.service;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import swm.s3.coclimb.api.adapter.out.aws.AwsCloudFrontManager;
+import swm.s3.coclimb.api.adapter.out.aws.AwsSTSManager;
+import swm.s3.coclimb.api.application.port.out.aws.dto.S3AccessToken;
 import swm.s3.coclimb.api.adapter.out.oauth.instagram.dto.InstagramMediaResponseDto;
 import swm.s3.coclimb.api.application.port.in.media.MediaCommand;
 import swm.s3.coclimb.api.application.port.in.media.MediaQuery;
@@ -13,7 +17,7 @@ import swm.s3.coclimb.api.application.port.in.media.dto.MediaDeleteRequestDto;
 import swm.s3.coclimb.api.application.port.in.media.dto.MediaPageRequestDto;
 import swm.s3.coclimb.api.application.port.in.media.dto.MediaUpdateRequestDto;
 import swm.s3.coclimb.api.application.port.out.aws.AwsS3UpdatePort;
-import swm.s3.coclimb.api.application.port.out.filedownload.DownloadedFileDetail;
+import swm.s3.coclimb.api.application.port.out.aws.dto.S3AccessToken;
 import swm.s3.coclimb.api.application.port.out.filedownload.FileDownloadPort;
 import swm.s3.coclimb.api.application.port.out.oauth.instagram.InstagramDataPort;
 import swm.s3.coclimb.api.application.port.out.persistence.media.MediaLoadPort;
@@ -35,15 +39,20 @@ public class MediaService implements MediaQuery, MediaCommand {
     private final InstagramDataPort instagramDataPort;
     private final MediaLoadPort mediaLoadPort;
     private final MediaUpdatePort mediaUpdatePort;
+
     private final FileDownloadPort fileDownloadPort;
     private final AwsS3UpdatePort awsS3UpdatePort;
 
+    private final AwsSTSManager awsSTSManager;
+    private final AwsCloudFrontManager awsCloudFrontManager;
+
+    @Deprecated
     @Override
     public List<InstagramMediaResponseDto> getMyInstagramVideos(String accessToken) {
         List<InstagramMediaResponseDto> myMedias = instagramDataPort.getMyMedias(accessToken);
         List<InstagramMediaResponseDto> myVideos = new ArrayList<InstagramMediaResponseDto>();
 
-        for(InstagramMediaResponseDto media : myMedias) {
+        for (InstagramMediaResponseDto media : myMedias) {
             if (media.getMediaType().equals("VIDEO")) {
                 myVideos.add(media);
             }
@@ -56,17 +65,12 @@ public class MediaService implements MediaQuery, MediaCommand {
     @Transactional
     public void createMedia(MediaCreateRequestDto mediaCreateRequestDto) {
         InstagramMediaInfo instagramMediaInfo = mediaCreateRequestDto.getInstagramMediaInfo();
-        if(instagramMediaInfo != null && isInstagramMediaIdDuplicated(instagramMediaInfo.getId())) {
+        if (instagramMediaInfo != null && isInstagramMediaIdDuplicated(instagramMediaInfo.getId())) {
             throw new InstagramMediaIdConflict();
         }
-
-        DownloadedFileDetail mediaFile = fileDownloadPort.downloadFile(mediaCreateRequestDto.getMediaUrl());
-        String mediaUrl = awsS3UpdatePort.uploadFile(mediaFile);
-
-        DownloadedFileDetail thumbnailFile = fileDownloadPort.downloadFile(mediaCreateRequestDto.getThumbnailUrl());
-        String thumbnailUrl = awsS3UpdatePort.uploadFile(thumbnailFile);
-
-        mediaUpdatePort.save(mediaCreateRequestDto.toEntity(mediaUrl, thumbnailUrl));
+        mediaUpdatePort.save(mediaCreateRequestDto.toEntity(
+                awsCloudFrontManager.getCloudFrontUrl(mediaCreateRequestDto.getMediaUrl()),
+                awsCloudFrontManager.getCloudFrontUrl(mediaCreateRequestDto.getThumbnailUrl())));
     }
 
     private boolean isInstagramMediaIdDuplicated(String instagramMediaId) {
@@ -79,8 +83,7 @@ public class MediaService implements MediaQuery, MediaCommand {
         PageRequest pageRequest = PageRequest.of(
                 requestDto.getPage(),
                 requestDto.getSize());
-
-        return mediaLoadPort.findAllPaged(pageRequest);
+        return getSignedPage(mediaLoadPort.findAllPaged(pageRequest));
     }
 
     @Override
@@ -89,7 +92,7 @@ public class MediaService implements MediaQuery, MediaCommand {
                 requestDto.getPage(),
                 requestDto.getSize());
 
-        return mediaLoadPort.findPagedByGymName(gymName, pageRequest);
+        return getSignedPage(mediaLoadPort.findPagedByGymName(gymName, pageRequest));
     }
 
     @Override
@@ -98,7 +101,7 @@ public class MediaService implements MediaQuery, MediaCommand {
                 requestDto.getPage(),
                 requestDto.getSize());
 
-        return mediaLoadPort.findPagedByUserName(userName, pageRequest);
+        return getSignedPage(mediaLoadPort.findPagedByUserName(userName, pageRequest));
     }
 
     @Override
@@ -107,19 +110,31 @@ public class MediaService implements MediaQuery, MediaCommand {
                 requestDto.getPage(),
                 requestDto.getSize());
 
-        return mediaLoadPort.findPagedByGymNameAndUserName(gymName, userName, pageRequest);
+        return getSignedPage(mediaLoadPort.findPagedByGymNameAndUserName(gymName, userName, pageRequest));
     }
 
     @Override
     public Media getMediaById(Long mediaId) {
-        return mediaLoadPort.findById(mediaId).orElseThrow(MediaNotFound::new);
+        return signUrl(mediaLoadPort.findById(mediaId).orElseThrow(MediaNotFound::new));
+    }
+
+    private PageImpl<Media> getSignedPage(Page<Media> page) {
+        return new PageImpl<>(page.getContent().stream().map(this::signUrl).toList(),
+                PageRequest.of(page.getNumber(), page.getSize()),
+                page.getTotalElements());
+    }
+
+    private Media signUrl(Media media) {
+        media.setMediaUrl(awsCloudFrontManager.getSignedUrl(media.getMediaUrl()).url());
+        media.setThumbnailUrl(awsCloudFrontManager.getSignedUrl(media.getThumbnailUrl()).url());
+        return media;
     }
 
     @Override
     @Transactional
     public void updateMedia(MediaUpdateRequestDto mediaUpdateRequestDto) {
         Media media = mediaLoadPort.findById(mediaUpdateRequestDto.getMediaId()).orElseThrow(MediaNotFound::new);
-        if(!media.getUser().getId().equals(mediaUpdateRequestDto.getUser().getId())) {
+        if (!media.getUser().getId().equals(mediaUpdateRequestDto.getUser().getId())) {
             throw new MediaOwnerNotMatched();
         }
         media.update(mediaUpdateRequestDto.getDescription());
@@ -129,7 +144,7 @@ public class MediaService implements MediaQuery, MediaCommand {
     @Transactional
     public void deleteMedia(MediaDeleteRequestDto mediaDeleteRequestDto) {
         Media media = mediaLoadPort.findById(mediaDeleteRequestDto.getMediaId()).orElseThrow(MediaNotFound::new);
-        if(!media.getUser().getId().equals(mediaDeleteRequestDto.getUser().getId())) {
+        if (!media.getUser().getId().equals(mediaDeleteRequestDto.getUser().getId())) {
             throw new MediaOwnerNotMatched();
         }
 
@@ -137,4 +152,11 @@ public class MediaService implements MediaQuery, MediaCommand {
         awsS3UpdatePort.deleteFile(media.getThumbnailUrl());
         mediaUpdatePort.delete(media);
     }
+
+    @Override
+    public S3AccessToken createS3AccessToken(String bucket, String prefix, Long userId, String action) {
+        String key = awsSTSManager.generateKey(prefix, userId);
+        return S3AccessToken.of(bucket, key, awsSTSManager.getCredentials(bucket, key, action));
+    }
+
 }

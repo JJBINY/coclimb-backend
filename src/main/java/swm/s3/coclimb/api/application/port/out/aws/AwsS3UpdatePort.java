@@ -6,4 +6,5 @@ public interface AwsS3UpdatePort {
     String uploadFile(DownloadedFileDetail fileDetail);
 
     void deleteFile(String fileUrl);
+
 }

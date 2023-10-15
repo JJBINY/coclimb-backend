@@ -1,5 +1,6 @@
 package swm.s3.coclimb.api.application.service;
 
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -14,6 +15,7 @@ import swm.s3.coclimb.api.application.port.in.media.dto.MediaCreateRequestDto;
 import swm.s3.coclimb.api.application.port.in.media.dto.MediaDeleteRequestDto;
 import swm.s3.coclimb.api.application.port.in.media.dto.MediaPageRequestDto;
 import swm.s3.coclimb.api.application.port.in.media.dto.MediaUpdateRequestDto;
+import swm.s3.coclimb.api.application.port.out.aws.dto.S3AccessToken;
 import swm.s3.coclimb.api.application.port.out.filedownload.DownloadedFileDetail;
 import swm.s3.coclimb.api.exception.errortype.media.InstagramMediaIdConflict;
 import swm.s3.coclimb.domain.media.InstagramMediaInfo;
@@ -39,6 +41,7 @@ class MediaServiceTest extends IntegrationTestSupport {
     @MockBean
     private AwsS3Manager awsS3Manager;
 
+
     @Test
     @DisplayName("인스타그램 미디어 타입 중 VIDEO만 필터링하여 반환한다.")
     void getMyInstagramVideos() {
@@ -57,9 +60,61 @@ class MediaServiceTest extends IntegrationTestSupport {
     }
 
     @Test
-    @Transactional
-    @DisplayName("미디어를 저장할 수 있다.")
+    @DisplayName("미디어 정보를 저장할 수 있다.")
     void save() {
+        //given
+        userJpaRepository.save(User.builder().build());
+        User user = userJpaRepository.findAll().get(0);
+
+        MediaCreateRequestDto mediaCreateRequestDto = MediaCreateRequestDto.builder()
+                .user(user)
+                .mediaUrl("mediaUrl")
+                .thumbnailUrl("thumbnailUrl")
+                .mediaProblemInfo(MediaProblemInfo.builder()
+                        .color("problemColor")
+                        .build())
+                .build();
+
+        //when
+        mediaService.createMedia(mediaCreateRequestDto);
+        Media sut = mediaJpaRepository.findByUserId(user.getId()).get(0);
+
+        //then
+        assertThat(sut.getUser().getId()).isEqualTo(user.getId());
+        assertThat(sut.getMediaProblemInfo().getColor()).isEqualTo("problemColor");
+    }
+
+    @Test
+    @DisplayName("미디어 정보 저장 시, 미디어와 썸네일 리소스는 CDN Contents URL로 변경되어 저장된다.")
+    void ConvertToCDNUrl() {
+        //given
+        userJpaRepository.save(User.builder().build());
+        User user = userJpaRepository.findAll().get(0);
+
+        MediaCreateRequestDto mediaCreateRequestDto = MediaCreateRequestDto.builder()
+                .user(user)
+                .mediaUrl("mediaUrl")
+                .thumbnailUrl("thumbnailUrl")
+                .mediaProblemInfo(MediaProblemInfo.builder()
+                        .color("problemColor")
+                        .build())
+                .build();
+
+        //when
+        mediaService.createMedia(mediaCreateRequestDto);
+        Media sut = mediaJpaRepository.findByUserId(user.getId()).get(0);
+
+        //then
+        assertThat(sut.getUser().getId()).isEqualTo(user.getId());
+        assertThat(sut.getMediaUrl()).startsWith(cloudFrontProperties.getHost());
+        assertThat(sut.getThumbnailUrl()).startsWith(cloudFrontProperties.getHost());
+    }
+
+    @Deprecated
+    @Test
+    @Transactional
+    @DisplayName("인스타그램으로부터 미디어를 저장할 수 있다.")
+    void saveWithInstagramMedia() {
         //given
         given(fileDownloader.downloadFile(any())).willReturn(DownloadedFileDetail.builder().build());
         given(awsS3Manager.uploadFile(any())).willReturn("https://test.com");
@@ -116,6 +171,8 @@ class MediaServiceTest extends IntegrationTestSupport {
         //given
         mediaJpaRepository.saveAll(IntStream.range(0, 10)
                 .mapToObj(i -> Media.builder()
+                        .mediaUrl("url")
+                        .thumbnailUrl("url")
                         .instagramMediaInfo(InstagramMediaInfo.builder()
                                 .id(String.valueOf(i))
                                 .build())
@@ -151,7 +208,10 @@ class MediaServiceTest extends IntegrationTestSupport {
     @DisplayName("미디어 ID로 조회할 수 있다.")
     void getById() {
         //given
-        mediaJpaRepository.save(Media.builder().build());
+        mediaJpaRepository.save(Media.builder()
+                .mediaUrl("url")
+                .thumbnailUrl("url")
+                .build());
         Long mediaId = mediaJpaRepository.findAll().get(0).getId();
 
         //when
@@ -216,6 +276,8 @@ class MediaServiceTest extends IntegrationTestSupport {
 
         mediaJpaRepository.saveAll(IntStream.range(0, 10)
                 .mapToObj(i -> Media.builder()
+                        .mediaUrl("url")
+                        .thumbnailUrl("url")
                         .mediaProblemInfo(MediaProblemInfo.builder()
                                 .gymName(gymNames.get(i % 2))
                                 .build())
@@ -261,6 +323,8 @@ class MediaServiceTest extends IntegrationTestSupport {
         mediaJpaRepository.saveAll(IntStream.range(0, 10)
                 .mapToObj(i -> Media.builder()
                         .user(users.get(i % 2))
+                        .mediaUrl("url")
+                        .thumbnailUrl("url")
                         .build())
                 .toList());
 
@@ -306,6 +370,8 @@ class MediaServiceTest extends IntegrationTestSupport {
         mediaJpaRepository.saveAll(IntStream.range(0, 10)
                 .mapToObj(i -> Media.builder()
                         .user(users.get(i % 2))
+                        .mediaUrl("url")
+                        .thumbnailUrl("url")
                         .mediaProblemInfo(MediaProblemInfo.builder()
                                 .gymName(gymNames.get(i % 2))
                                 .build())
@@ -332,4 +398,23 @@ class MediaServiceTest extends IntegrationTestSupport {
                 .extracting("user.name", "mediaProblemInfo.gymName")
                 .containsOnly(tuple(userName2, gymName2));
     }
+
+    @Test
+    @DisplayName("특정 S3 리소스에 미디어 업로드가 가능한 임시 접근 권한을 생성한다.")
+    void createTokenForUpload() throws Exception {
+        // given
+        Long userId = 1L;
+        String bucket = "coclimb-media-bucket";
+        String prefix = "test";
+        String action = "PutObject";
+
+        // when
+        S3AccessToken sut = mediaService.createS3AccessToken(bucket, prefix, userId,action);
+
+        // then
+        assertThat(sut).isNotNull();
+        Assertions.assertThatCode(() ->
+                uploadToSpecificResource(bucket, sut.getKey(), sut.getCredentials())).doesNotThrowAnyException();
+    }
+
 }

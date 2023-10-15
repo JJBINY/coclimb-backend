@@ -36,7 +36,6 @@ import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuild
 import static org.springframework.restdocs.operation.preprocess.Preprocessors.*;
 import static org.springframework.restdocs.payload.PayloadDocumentation.*;
 import static org.springframework.restdocs.request.RequestDocumentation.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -104,10 +103,10 @@ public class MediaControllerDocsTest extends RestDocsTestSupport {
                                 .description("미디어 타입"),
                         fieldWithPath("mediaUrl")
                                 .type(JsonFieldType.STRING)
-                                .description("미디어 CDN URL"),
+                                .description("1. 업로드 한 미디어가 저장된 S3 bucket의 key 혹은 2. 외부 플랫폼 미디어 CDN URL"),
                         fieldWithPath("thumbnailUrl")
                                 .type(JsonFieldType.STRING)
-                                .description("미디어 썸네일 CDN URL"),
+                                .description("1. 업로드 한 썸네일이 저장된 S3 bucket의 key 혹은 2. 외부 플랫폼 썸네일 CDN URL"),
                         fieldWithPath("description")
                                 .type(JsonFieldType.STRING)
                                 .optional()
@@ -151,6 +150,7 @@ public class MediaControllerDocsTest extends RestDocsTestSupport {
 
         mediaJpaRepository.saveAll(IntStream.range(0, 10).mapToObj(i -> Media.builder()
                         .user(users.get(i))
+                        .mediaUrl("mediaUrl")
                         .thumbnailUrl("thumbnailUrl" + String.valueOf(i))
                         .mediaProblemInfo(MediaProblemInfo.builder()
                                 .gymName("gym" + String.valueOf(i))
@@ -271,12 +271,13 @@ public class MediaControllerDocsTest extends RestDocsTestSupport {
 
         //when
         //then
-        ResultActions result = mockMvc.perform(get("/medias/{id}", mediaId))
+        ResultActions result = mockMvc.perform(org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.get("/medias/{id}", mediaId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(mediaId))
-                .andExpect(jsonPath("$.thumbnailUrl").value("thumbnailUrl"))
                 .andExpect(jsonPath("$.username").value("username"))
-                .andExpect(jsonPath("$.mediaUrl").value("mediaUrl"))
+                .andExpect(jsonPath("$.platform").value("INSTAGRAM"))
+                .andExpect(jsonPath("$.mediaUrl").isString())
+                .andExpect(jsonPath("$.thumbnailUrl").isString())
                 .andExpect(jsonPath("$.description").value("description"))
                 .andExpect(jsonPath("$.problem.clearDate").value(LocalDate.now().toString()))
                 .andExpect(jsonPath("$.problem.gymName").value("gymName"))
@@ -404,5 +405,58 @@ public class MediaControllerDocsTest extends RestDocsTestSupport {
                         parameterWithName("id")
                                 .description("미디어 ID")
                 )));
+    }
+
+    @Test
+    @DisplayName("미디어 업로드를 위한 엑세스 토큰을 요청하는 API")
+    void getMediaAccessToken() throws Exception {
+        // given
+        User user = User.builder()
+                .name("user")
+                .build();
+        userJpaRepository.save(user);
+        String accessToken = jwtManager.issueToken(user.getId().toString());
+
+        // when, then
+        ResultActions result = mockMvc.perform(get("/medias/upload-token")
+                        .header("Authorization", accessToken)
+                        .queryParam("type", "0"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.accessKey").isString())
+                .andExpect(jsonPath("$.secretKey").isString())
+                .andExpect(jsonPath("$.sessionToken").isString())
+                .andExpect(jsonPath("$.bucket").value("coclimb-media-bucket"))
+                .andExpect(jsonPath("$.key").isString());
+
+        //docs
+        result.andDo(document("media-upload-token",
+                preprocessRequest(prettyPrint()),
+                preprocessResponse(prettyPrint()),
+                requestHeaders(
+                        headerWithName("Authorization")
+                                .description("JWT 인증 토큰")
+                ),
+                queryParameters(
+                        parameterWithName("type")
+                                .description("업로드 파일 타입 : 0(미디어), 1(썸네일)")
+                ),
+                responseFields(
+                        fieldWithPath("accessKey")
+                                .type(JsonFieldType.STRING)
+                                .description("access key"),
+                        fieldWithPath("secretKey")
+                                .type(JsonFieldType.STRING)
+                                .description("secret key"),
+                        fieldWithPath("sessionToken")
+                                .type(JsonFieldType.STRING)
+                                .description("session token"),
+                        fieldWithPath("bucket")
+                                .type(JsonFieldType.STRING)
+                                .description("s3 버켓 이름"),
+                        fieldWithPath("key")
+                                .type(JsonFieldType.STRING)
+                                .description("파일 경로")
+                )));
+
     }
 }
