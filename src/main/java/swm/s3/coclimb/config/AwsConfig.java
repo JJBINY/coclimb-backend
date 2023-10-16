@@ -75,7 +75,7 @@ public class AwsConfig {
 
     @Getter
     @NoArgsConstructor
-    public class RdsSecret {
+    public static class RdsSecret {
         private String username;
         private String password;
     }
