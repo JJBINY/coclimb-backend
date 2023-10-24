@@ -38,21 +38,17 @@ public class AwsS3Manager implements AwsS3UpdatePort {
     }
 
     @Override
-    public void deleteFile(String fileUrl) {
-        try {
-            String fileName = fileUrl.substring(cloudFrontProperties.getHost().length());
-            amazonS3Client.deleteObject(bucket, fileName);
-        } catch (Exception e) {
-            throw new S3DeleteFail();
-        }
-    }
+    public URL getUploadUrl(String key) {
 
-    private void removeLocalFile(File targetFile) {
-        try {
-            targetFile.delete();
-        } catch (Exception e) {
-            throw new LocalFileDeleteFail();
-        }
+        PutObjectPresignRequest putObjectPresignRequest = PutObjectPresignRequest.builder()
+                .signatureDuration(Duration.ofMinutes(5))
+                .putObjectRequest(PutObjectRequest.builder()
+                        .bucket(bucket)
+                        .key(key)
+                        .build())
+                .build();
+
+        return s3Presigner.presignPutObject(putObjectPresignRequest).url();
     }
 
 }

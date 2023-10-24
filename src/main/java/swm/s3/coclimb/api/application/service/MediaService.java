@@ -154,9 +154,13 @@ public class MediaService implements MediaQuery, MediaCommand {
     }
 
     @Override
-    public S3AccessToken createS3AccessToken(String bucket, String prefix, Long userId, String action) {
-        String key = awsSTSManager.generateKey(prefix, userId);
-        return S3AccessToken.of(bucket, key, awsSTSManager.getCredentials(bucket, key, action));
+    public MediaUploadUrl getUploadUrl(Long userId) {
+        UUID uuid = UUID.randomUUID();
+
+        return MediaUploadUrl.builder()
+                .videoUploadUrl(fileStoreLoadPort.getUploadUrl(String.format("%s/%s/%s.%s", userId, "video", uuid, "mp4")).toString())
+                .thumbnailUploadUrl(fileStoreLoadPort.getUploadUrl(String.format("%s/%s/%s.%s", userId, "thumbnail", uuid, "jpg")).toString())
+                .build();
     }
 
 }

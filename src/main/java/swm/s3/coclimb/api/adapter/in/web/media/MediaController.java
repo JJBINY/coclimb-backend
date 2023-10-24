@@ -113,24 +113,12 @@ public class MediaController {
                 .build();
     }
 
-    @GetMapping("/medias/upload-token")
-    public ResponseEntity<S3AccessTokenResponse> getMediaUploadToken(@LoginUser User user, @RequestParam int type) {
-        String prefix;
-        switch (type){
-            case 0:
-                prefix = "media";
-                break;
-            case 1:
-                prefix = "thumbnail";
-                break;
-            default:
-                throw ValidationFail.onRequest()
-                        .addField("type", FieldErrorType.NOT_MATCH);
-        }
+    @GetMapping("/medias/upload")
+    public ResponseEntity<MediaUploadUrlResponse> getMediaUploadUrl(@LoginUser User user) {
 
         return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(S3AccessTokenResponse.of(
-                        mediaCommand.createS3AccessToken("coclimb-media-bucket", prefix, user.getId(), WRITE_ACTION)));
+                .status(HttpStatus.OK)
+                .body(MediaUploadUrlResponse.of(
+                        mediaQuery.getUploadUrl(user.getId())));
     }
 }
