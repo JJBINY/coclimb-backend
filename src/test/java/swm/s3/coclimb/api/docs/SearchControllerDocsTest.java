@@ -18,6 +18,7 @@ import static org.springframework.restdocs.payload.PayloadDocumentation.response
 import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
 import static org.springframework.restdocs.request.RequestDocumentation.queryParameters;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 class SearchControllerDocsTest extends RestDocsTestSupport {
@@ -48,6 +49,10 @@ class SearchControllerDocsTest extends RestDocsTestSupport {
                 )
                 .andDo(print())
                 .andExpect(status().isOk());
+//                .andExpect(jsonPath("$[0].name").value("더클서울맨"))
+//                .andExpect(jsonPath("$[0].type").value(target1))
+//                .andExpect(jsonPath("$[1].name").value("더클라임 클라이밍 짐앤샵 서울대점"))
+//                .andExpect(jsonPath("$[1].type").value(target2));
 
         // docs
         result.andDo(document("search-autocomplete-name",

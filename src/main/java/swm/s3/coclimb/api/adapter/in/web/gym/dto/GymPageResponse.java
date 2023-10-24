@@ -33,7 +33,7 @@ public class GymPageResponse {
     }
 
     @Getter
-    private class GymResponse {
+    private static class GymResponse {
         private String name;
         private String address;
         private String phone;

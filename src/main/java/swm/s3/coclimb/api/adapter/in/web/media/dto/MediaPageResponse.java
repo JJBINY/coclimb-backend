@@ -33,7 +33,7 @@ public class MediaPageResponse {
     }
 
     @Getter
-    private class MediaInfo {
+    private static class MediaInfo {
         private Long id;
         private String thumbnailUrl;
         private String gymName;
