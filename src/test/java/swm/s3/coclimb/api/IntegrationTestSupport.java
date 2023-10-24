@@ -16,11 +16,11 @@ import software.amazon.awssdk.services.sts.model.Credentials;
 import swm.s3.coclimb.api.adapter.out.aws.AwsCloudFrontManager;
 import swm.s3.coclimb.api.adapter.out.aws.AwsS3Manager;
 import swm.s3.coclimb.api.adapter.out.aws.AwsSTSManager;
-import swm.s3.coclimb.api.adapter.out.persistence.gym.GymDocumentRepository;
 import swm.s3.coclimb.api.adapter.out.filedownload.FileDownloader;
 import swm.s3.coclimb.api.adapter.out.oauth.instagram.InstagramOAuthRecord;
 import swm.s3.coclimb.api.adapter.out.oauth.instagram.InstagramRestApi;
 import swm.s3.coclimb.api.adapter.out.oauth.instagram.InstagramRestApiManager;
+import swm.s3.coclimb.api.adapter.out.persistence.gym.GymDocumentRepository;
 import swm.s3.coclimb.api.adapter.out.persistence.gym.GymJpaRepository;
 import swm.s3.coclimb.api.adapter.out.persistence.gym.GymRepository;
 import swm.s3.coclimb.api.adapter.out.persistence.gymlike.GymLikeJpaRepository;
@@ -55,7 +55,7 @@ public abstract class IntegrationTestSupport {
 
     @BeforeAll
     static void setUpContainer() {
-        dockerRunner.runTestContainers();
+//        dockerRunner.runTestContainers();
     }
 
     // User

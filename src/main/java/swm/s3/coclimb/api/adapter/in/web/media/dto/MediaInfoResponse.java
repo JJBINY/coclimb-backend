@@ -2,10 +2,12 @@ package swm.s3.coclimb.api.adapter.in.web.media.dto;
 
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import swm.s3.coclimb.domain.media.Media;
 import swm.s3.coclimb.domain.media.MediaProblemInfo;
 
 @Getter
+@NoArgsConstructor
 public class MediaInfoResponse {
     Long id;
     String username;

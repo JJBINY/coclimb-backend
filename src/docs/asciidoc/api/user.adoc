@@ -6,6 +6,22 @@ include::{snippets}/user-myinfo/http-request.adoc[]
 include::{snippets}/user-myinfo/http-response.adoc[]
 include::{snippets}/user-myinfo/response-fields.adoc[]
 ---
+=== 유저 정보 수정
+==== HTTP Request
+include::{snippets}/user-update/http-request.adoc[]
+==== Request Headers
+include::{snippets}/user-update/request-headers.adoc[]
+include::{snippets}/user-update/request-fields.adoc[]
+==== HTTP Response
+include::{snippets}/user-update/http-response.adoc[]
+=== 유저 이름 중복 체크
+==== HTTP Request
+include::{snippets}/user-checkDuplicate/http-request.adoc[]
+==== Request Parameters
+include::{snippets}/user-checkDuplicate/query-parameters.adoc[]
+==== HTTP Response
+include::{snippets}/user-checkDuplicate/http-response.adoc[]
+include::{snippets}/user-checkDuplicate/response-fields.adoc[]
 === 회원 탈퇴
 ==== HTTP Request
 include::{snippets}/user-delete/http-request.adoc[]

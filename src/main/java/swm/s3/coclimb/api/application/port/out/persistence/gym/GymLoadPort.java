@@ -15,6 +15,8 @@ public interface GymLoadPort {
 
     Gym getByNameAtEs(String name);
 
+    Gym getByName(String name);
+
     List<Gym> findAll();
 
     Page<Gym> findPage(PageRequest pageRequest);

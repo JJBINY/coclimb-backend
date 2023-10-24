@@ -10,4 +10,6 @@ public interface UserJpaRepository extends JpaRepository<User, Long> {
     Optional<User> findByInstagramUserInfoId(Long instagramUserId);
 
     Optional<User> findByKakaoUserInfoId(Long kakaoUserId);
+
+    Optional<User> findByName(String name);
 }

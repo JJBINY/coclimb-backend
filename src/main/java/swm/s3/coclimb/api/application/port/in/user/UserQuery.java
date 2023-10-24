@@ -9,4 +9,6 @@ public interface UserQuery {
     Optional<User> findUserByInstagramUserId(Long instagramUserId);
 
     Optional<User> findUserByKakaoUserId(Long kakaoUserId);
+
+    boolean isDuplicateUsername(String username);
 }

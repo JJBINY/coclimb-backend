@@ -10,4 +10,6 @@ public interface UserLoadPort {
     Optional<User> findByKakaoUserId(Long kakaoUserId);
 
     User getById(Long id);
+
+    Optional<User> findByName(String name);
 }

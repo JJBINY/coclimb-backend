@@ -6,6 +6,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.restdocs.payload.JsonFieldType;
 import org.springframework.test.web.servlet.ResultActions;
 import swm.s3.coclimb.api.RestDocsTestSupport;
+import swm.s3.coclimb.api.adapter.in.web.user.dto.UserUpdateRequest;
 import swm.s3.coclimb.api.adapter.out.aws.AwsS3Manager;
 import swm.s3.coclimb.domain.gymlike.GymLike;
 import swm.s3.coclimb.domain.media.Media;
@@ -22,10 +23,10 @@ import static org.springframework.restdocs.headers.HeaderDocumentation.headerWit
 import static org.springframework.restdocs.headers.HeaderDocumentation.requestHeaders;
 import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document;
 import static org.springframework.restdocs.operation.preprocess.Preprocessors.*;
-import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
-import static org.springframework.restdocs.payload.PayloadDocumentation.responseFields;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.restdocs.payload.PayloadDocumentation.*;
+import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
+import static org.springframework.restdocs.request.RequestDocumentation.queryParameters;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -47,7 +48,8 @@ class UserControllerDocsTest extends RestDocsTestSupport {
         ResultActions result = mockMvc.perform(get("/users/me")
                         .header("Authorization", accessToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.username").value("유저"));
+                .andExpect(jsonPath("$.username").value("유저"))
+                .andExpect(jsonPath("$.instagramUsername").value("instagramUsername"));
 
         // docs
         result.andDo(document("user-myinfo",
@@ -59,7 +61,70 @@ class UserControllerDocsTest extends RestDocsTestSupport {
                         fieldWithPath("instagramUsername").type(JsonFieldType.STRING)
                                 .description("인스타그램 사용자이름")
                 )));
+    }
 
+    @Test
+    @DisplayName("회원 정보를 수정하는 API")
+    void updateUser() throws Exception {
+        // given
+        Long userId = userJpaRepository.save(User.builder().build()).getId();
+        String username = "유저";
+        UserUpdateRequest request = UserUpdateRequest.builder().username(username).build();
+
+        // when
+        ResultActions result = mockMvc.perform(patch("/users/me")
+                        .header("Authorization", jwtManager.issueToken(userId.toString()))
+                        .content(objectMapper.writeValueAsString(request))
+                        .contentType("application/json"));
+
+        // then
+        result.andExpect(status().isNoContent());
+        User sut = userJpaRepository.findById(userId).orElse(null);
+        assertThat(sut.getName()).isEqualTo(username);
+
+        // docs
+        result.andDo(document("user-update",
+                preprocessRequest(prettyPrint()),
+                preprocessResponse(prettyPrint()),
+                requestHeaders(
+                        headerWithName("Authorization").description("JWT 인증 토큰")
+                ),
+                requestFields(
+                        fieldWithPath("username").type(JsonFieldType.STRING)
+                                .description("사용자이름")
+                )));
+    }
+
+    @Test
+    @DisplayName("유저 네임 중복 체크하는 API")
+    void checkDuplicateUsername() throws Exception {
+        //given
+        String username = "유저";
+        userJpaRepository.save(User.builder().name(username).build());
+
+        //when
+        ResultActions result1 = mockMvc.perform(get("/users/checkDuplicate")
+                        .param("username", username));
+        ResultActions result2 = mockMvc.perform(get("/users/checkDuplicate")
+                        .param("username", "유저2"));
+
+        //then
+        result1.andExpect(status().isOk())
+                .andExpect(jsonPath("$.duplicate").value(true));
+        result2.andExpect(status().isOk())
+                .andExpect(jsonPath("$.duplicate").value(false));
+
+        //docs
+        result1.andDo(document("user-checkDuplicate",
+                preprocessRequest(prettyPrint()),
+                preprocessResponse(prettyPrint()),
+                queryParameters(
+                        parameterWithName("username").description("유저 이름")
+                ),
+                responseFields(
+                        fieldWithPath("duplicate").type(JsonFieldType.BOOLEAN)
+                                .description("중복 여부")
+                )));
     }
 
     @Test

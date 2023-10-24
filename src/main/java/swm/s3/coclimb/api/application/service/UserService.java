@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import swm.s3.coclimb.api.application.port.in.user.UserCommand;
 import swm.s3.coclimb.api.application.port.in.user.UserQuery;
+import swm.s3.coclimb.api.application.port.in.user.dto.UserUpdateRequestDto;
 import swm.s3.coclimb.api.application.port.out.aws.AwsS3UpdatePort;
 import swm.s3.coclimb.api.application.port.out.persistence.gymlike.GymLikeUpdatePort;
 import swm.s3.coclimb.api.application.port.out.persistence.media.MediaLoadPort;
@@ -18,7 +19,6 @@ import swm.s3.coclimb.domain.user.User;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.stream.IntStream;
 
 @Service
@@ -45,6 +45,13 @@ public class UserService implements UserQuery, UserCommand {
     }
 
     @Override
+    public boolean isDuplicateUsername(String username) {
+        Optional<User> user = userLoadPort.findByName(username);
+
+        return user.isPresent();
+    }
+
+    @Override
     @Transactional
     public Long createUserByInstagramInfo(InstagramUserInfo instagramUserInfo) {
         return userUpdatePort.save((User.builder()
@@ -57,9 +64,16 @@ public class UserService implements UserQuery, UserCommand {
     @Transactional
     public Long createUserByKakaoInfo(KakaoUserInfo kakaoUserInfo) {
         return userUpdatePort.save((User.builder()
-                .name(UUID.randomUUID().toString())
+                .name(null)
                 .kakaoUserInfo(kakaoUserInfo)
                 .build()));
+    }
+
+    @Override
+    @Transactional
+    public void updateUser(UserUpdateRequestDto userUpdateRequestDto) {
+        User user = userUpdateRequestDto.getUser();
+        user.update(userUpdateRequestDto.getUsername());
     }
 
     @Override

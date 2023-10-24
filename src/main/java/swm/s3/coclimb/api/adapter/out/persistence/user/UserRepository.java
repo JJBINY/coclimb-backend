@@ -45,4 +45,11 @@ public class UserRepository implements UserLoadPort, UserUpdatePort {
         return userJpaRepository.findById(id)
                 .orElseThrow(UserNotFound::new);
     }
+
+    @Override
+    public Optional<User> findByName(String name) {
+        return userJpaRepository.findByName(name);
+    }
+
+
 }

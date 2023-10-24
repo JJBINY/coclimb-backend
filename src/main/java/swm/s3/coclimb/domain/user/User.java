@@ -32,4 +32,7 @@ public class User extends BaseTimeEntity {
         this.kakaoUserInfo = kakaoUserInfo;
     }
 
+    public void update(String name) {
+        this.name = name;
+    }
 }

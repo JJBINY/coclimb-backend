@@ -475,7 +475,4 @@ class GymControllerTest extends ControllerTestSupport {
                 .andDo(print())
                 .andExpect(status().isBadRequest());
     }
-
-
-
 }
