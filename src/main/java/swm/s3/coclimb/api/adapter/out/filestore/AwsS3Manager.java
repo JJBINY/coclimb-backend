@@ -1,10 +1,14 @@
-package swm.s3.coclimb.api.adapter.out.aws;
+package swm.s3.coclimb.api.adapter.out.filestore;
 
 import com.amazonaws.services.s3.AmazonS3Client;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import swm.s3.coclimb.api.application.port.out.aws.AwsS3UpdatePort;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
+import swm.s3.coclimb.api.application.port.out.filestore.FileStoreLoadPort;
+import swm.s3.coclimb.api.application.port.out.filestore.FileStoreUpdatePort;
 import swm.s3.coclimb.api.application.port.out.filedownload.DownloadedFileDetail;
 import swm.s3.coclimb.api.exception.errortype.aws.LocalFileDeleteFail;
 import swm.s3.coclimb.api.exception.errortype.aws.S3DeleteFail;
@@ -12,28 +16,27 @@ import swm.s3.coclimb.api.exception.errortype.aws.S3UploadFail;
 import swm.s3.coclimb.config.propeties.AwsCloudFrontProperties;
 
 import java.io.File;
+import java.net.URL;
+import java.time.Duration;
 
 @Component
 @RequiredArgsConstructor
-public class AwsS3Manager implements AwsS3UpdatePort {
+public class AwsS3Manager implements FileStoreUpdatePort, FileStoreLoadPort {
 
     private final AmazonS3Client amazonS3Client;
     private final AwsCloudFrontProperties cloudFrontProperties;
+    private final S3Presigner s3Presigner;
     @Value("${aws-config.s3.bucket}")
     private String bucket;
 
-    @Override
-    public String uploadFile(DownloadedFileDetail fileDetail) {
-        File uploadFile = null;
 
+    @Deprecated
+    @Override
+    public void deleteFile(String s3Key) {
         try {
-            uploadFile = new File(fileDetail.getPath());
-            amazonS3Client.putObject(bucket, fileDetail.getName(), uploadFile);
-            return cloudFrontProperties.getHost() + fileDetail.getName();
+            amazonS3Client.deleteObject(bucket, s3Key);
         } catch (Exception e) {
-            throw new S3UploadFail();
-        } finally {
-            removeLocalFile(uploadFile);
+            throw new S3DeleteFail(e.getMessage());
         }
     }
 
