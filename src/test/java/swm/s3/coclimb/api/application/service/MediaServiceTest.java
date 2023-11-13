@@ -10,7 +10,6 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.domain.Page;
-import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import swm.s3.coclimb.api.IntegrationTestSupport;
 import swm.s3.coclimb.api.adapter.out.oauth.instagram.InstagramRestApiManager;
 import swm.s3.coclimb.api.adapter.out.oauth.instagram.dto.InstagramMediaResponseDto;
@@ -75,7 +74,7 @@ class MediaServiceTest extends IntegrationTestSupport {
 
         //when
         mediaService.createMedia(mediaCreateRequestDto);
-        Media sut = mediaJpaRepository.findByUserId(user.getId()).get(0);
+        Media sut = mediaJpaRepository.findByUserIdOrderByCreatedAtDesc(user.getId()).get(0);
 
         //then
         assertThat(sut.getUser().getId()).isEqualTo(user.getId());
@@ -131,7 +130,7 @@ class MediaServiceTest extends IntegrationTestSupport {
         userJpaRepository.save(User.builder().build());
         User user = userJpaRepository.findAll().get(0);
         mediaJpaRepository.save(Media.builder().user(user).description("test").build());
-        Long mediaId = mediaJpaRepository.findByUserId(user.getId()).get(0).getId();
+        Long mediaId = mediaJpaRepository.findByUserIdOrderByCreatedAtDesc(user.getId()).get(0).getId();
 
         //when
         mediaService.updateMedia(MediaUpdateRequestDto.builder()
